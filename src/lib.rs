@@ -1,11 +1,13 @@
 #![crate_name = "bindgen"]
 #![crate_type = "dylib"]
-#![feature(globs, quote, phase, plugin_registrar)]
+#![feature(quote, plugin, plugin_registrar, unboxed_closures)]
 
 extern crate syntax;
 extern crate rustc;
 extern crate libc;
-#[phase(plugin, link)] extern crate log;
+#[plugin]
+#[macro_use]
+extern crate log;
 
 use std::collections::HashSet;
 use std::default::Default;
