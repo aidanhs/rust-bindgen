@@ -3,9 +3,11 @@
 use libc::{c_uint, c_char, c_int, c_ulong};
 use std::{mem, io, ptr};
 use std::fmt;
+use std::str;
+use std::ffi;
 use std::hash::Hash;
 use std::hash::sip::SipState;
-use std::c_str::{CString, ToCStr};
+use std::ffi::CString;
 
 pub use clangll as ll;
 use clangll::*;
@@ -322,7 +324,8 @@ impl fmt::Show for String_ {
         }
         unsafe {
             let c_str = clang_getCString(self.x) as *const c_char;
-            String::from_raw_buf(c_str as *const u8).fmt(f)
+            let p = c_str as *const _;
+            str::from_utf8(ffi::c_str_to_bytes(&p)).unwrap().to_string().fmt(f)
         }
     }
 }
@@ -358,9 +361,9 @@ pub struct TranslationUnit {
 impl TranslationUnit {
     pub fn parse(ix: &Index, file: &str, cmd_args: &[String],
                  unsaved: &[UnsavedFile], opts: uint) -> TranslationUnit {
-        let _fname = file.to_c_str();
+        let _fname = CString::from_slice(file.as_bytes());
         let fname = _fname.as_ptr();
-        let _c_args: Vec<CString> = cmd_args.iter().map(|s| s.to_c_str()).collect();
+        let _c_args: Vec<CString> = cmd_args.iter().map(|s| CString::from_slice(s.as_bytes())).collect();
         let c_args: Vec<*const c_char> = _c_args.iter().map(|s| s.as_ptr()).collect();
         let mut c_unsaved: Vec<Struct_CXUnsavedFile> = unsaved.iter().map(|f| f.x).collect();
         let tu = unsafe {
@@ -453,8 +456,8 @@ pub struct UnsavedFile {
 
 impl UnsavedFile {
     pub fn new(name: &str, contents: &str) -> UnsavedFile {
-        let name = name.to_c_str();
-        let contents = contents.to_c_str();
+        let name = CString::from_slice(name.as_bytes());
+        let contents = CString::from_slice(contents.as_bytes());
         let x = Struct_CXUnsavedFile {
             Filename: name.as_ptr(),
             Contents: contents.as_ptr(),
