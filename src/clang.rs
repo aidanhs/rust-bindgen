@@ -16,7 +16,7 @@ pub struct Cursor {
     x: CXCursor
 }
 
-pub type CursorVisitor<'s> = |c: &Cursor, p: &Cursor|: 's -> Enum_CXChildVisitResult;
+pub type CursorVisitor<'s> = FnMut<(&'s Cursor, &'s Cursor), Enum_CXChildVisitResult> + 's;
 
 impl Cursor {
     // common
@@ -56,9 +56,9 @@ impl Cursor {
         }
     }
 
-    pub fn visit(&self, func: CursorVisitor) {
+    pub fn visit(&self, mut func: Box<CursorVisitor>) {
         unsafe {
-            let data = mem::transmute::<&CursorVisitor, CXClientData>(&func);
+            let data = mem::transmute::<&mut Box<CursorVisitor>, CXClientData>(&mut func);
             let opt_visit = Some(visit_children as extern "C" fn(CXCursor, CXCursor, CXClientData) -> Enum_CXChildVisitResult);
             clang_visitChildren(self.x, opt_visit, data);
         };
@@ -131,8 +131,9 @@ impl Cursor {
 extern fn visit_children(cur: CXCursor, parent: ll::CXCursor,
                          data: CXClientData) -> ll::Enum_CXChildVisitResult {
     unsafe {
-        let func = mem::transmute::<CXClientData, &mut CursorVisitor>(data);
-        return (*func)(&Cursor { x: cur }, &Cursor { x: parent });
+        let func = mem::transmute::<CXClientData, &mut Box<CursorVisitor>>(data);
+        let (cur_a, cur_b) = (Cursor { x: cur }, Cursor { x: parent });
+        return (*func)(&cur_a, &cur_b);
     }
 }
 
@@ -704,7 +705,7 @@ pub fn ast_dump(c: &Cursor, depth: int)-> Enum_CXVisitorResult {
         c.spelling().as_slice(),
         type_to_str(ct)).as_slice()
     );
-    c.visit(|s, _| {
+    c.visit(box |&: s, _: &Cursor| {
         ast_dump(s, depth + 1)
     });
     print_indent(depth, ")");

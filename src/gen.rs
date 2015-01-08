@@ -678,7 +678,7 @@ fn gen_comp_methods(ctx: &mut GenCtx, data_field: &str, data_offset: uint,
                     extra: &mut Vec<P<ast::Item>>) -> Vec<ast::ImplItem> {
     let data_ident = ctx.ext_cx.ident_of(data_field);
 
-    let mk_field_method = |ctx: &mut GenCtx, f: &FieldInfo, offset: uint| {
+    let mk_field_method = |&: ctx: &mut GenCtx, f: &FieldInfo, offset: uint| {
         // TODO: Implement bitfield accessors
         if f.bitfields.is_some() { return None; }
 
